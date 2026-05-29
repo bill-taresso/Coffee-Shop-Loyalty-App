@@ -111,6 +111,11 @@ export default function App() {
   const [scannedC, setScannedC]     = useState(null);
   const [cart, setCart]             = useState([]);
   const [now, setNow]               = useState(Date.now());
+  const [offers, setOffers]         = useState([
+    { id:"O001", text:"🧊 Freddo Espresso μόνο 1.50€ — Σήμερα!", active:true, color:"#1a2a3a", border:"#2a5a7a" },
+    { id:"O002", text:"⭐ Double stamps κάθε Τετάρτη!", active:true, color:"#2a1a3a", border:"#5a2a7a" },
+  ]);
+  const [offerForm, setOfferForm]   = useState({ text:"", color:"#1a2a10", border:"#3a6a20" });
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -308,7 +313,7 @@ export default function App() {
         {/* NAV Admin */}
         {user?.admin && (
           <div style={{display:"flex",gap:6,padding:"0 22px",marginBottom:22}}>
-            {[["orders","📋 Παραγγελίες"],["customers","👥 Πελάτες"],["scan","📷 Σάρωση"],["alerts","🚨 Alerts"]].map(([t,label])=>(
+            {[["orders","📋 Παραγγ."],["customers","👥 Πελάτες"],["scan","📷 Σάρωση"],["offers","🏷️ Προσφορές"],["alerts","🚨 Alerts"]].map(([t,label])=>(
               <button key={t} onClick={()=>{setAdminTab(t);setScreen(t==="scan"?"scan":"admin");}} style={{flex:1,padding:"9px 4px",borderRadius:7,fontSize:11,background:(screen==="scan"?t==="scan":adminTab===t&&screen==="admin")?C.gold:"transparent",border:`1px solid ${(screen==="scan"?t==="scan":adminTab===t&&screen==="admin")?C.gold:C.border}`,color:(screen==="scan"?t==="scan":adminTab===t&&screen==="admin")?C.bg:C.gold,cursor:"pointer",transition:"all .18s",position:"relative"}}>
                 {label}
                 {t==="orders"&&pendingOrders.length>0&&<span style={{position:"absolute",top:-6,right:-4,background:C.error,color:"#fff",borderRadius:"50%",width:18,height:18,fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>{pendingOrders.length}</span>}
@@ -351,6 +356,23 @@ export default function App() {
           {/* ══ HOME ═══════════════════════════════════════════ */}
           {screen==="home" && user && !user.admin && (
             <div className="fadeUp" style={{display:"flex",flexDirection:"column",gap:16}}>
+
+              {/* OFFERS BANNER */}
+              {offers.filter(o=>o.active).length>0 && (
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {offers.filter(o=>o.active).map((offer,i)=>(
+                    <div key={offer.id} style={{
+                      background:offer.color, border:`1px solid ${offer.border}`,
+                      borderRadius:12, padding:"14px 16px",
+                      display:"flex", alignItems:"center", gap:12,
+                      animation:`fadeUp .4s ease ${i*.1}s both`,
+                    }}>
+                      <div style={{fontSize:22}}>🏷️</div>
+                      <div style={{fontSize:15, lineHeight:1.4}}>{offer.text}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div style={{background:"linear-gradient(135deg,#1a1422 0%,#231a30 100%)",border:`1px solid ${C.border}`,borderRadius:16,padding:22,position:"relative",overflow:"hidden"}}>
                 <div style={{position:"absolute",right:-30,top:-30,width:130,height:130,borderRadius:"50%",background:`radial-gradient(circle,${C.gold}18,transparent 70%)`}}/>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
@@ -656,6 +678,71 @@ export default function App() {
                 </button>
               )}
               <div style={{fontSize:11,color:"#1e1a28",textAlign:"center"}}>Simulation · Η κάμερα ενεργοποιείται σε production</div>
+            </div>
+          )}
+
+          {/* ══ ADMIN OFFERS ═══════════════════════════════════ */}
+          {screen==="admin" && adminTab==="offers" && (
+            <div className="fadeUp" style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{fontSize:11,letterSpacing:3,color:C.gold,marginBottom:4}}>ΕΝΕΡΓΕΣ ΠΡΟΣΦΟΡΕΣ</div>
+
+              {/* Add new offer */}
+              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:16,marginBottom:8}}>
+                <div style={{fontSize:13,color:C.muted,marginBottom:10}}>Νέα Προσφορά</div>
+                <input
+                  value={offerForm.text}
+                  onChange={e=>setOfferForm(p=>({...p,text:e.target.value}))}
+                  placeholder="π.χ. 🧊 Freddo 1.50€ — Σήμερα μόνο!"
+                  style={{...iStyle, marginBottom:10}}
+                />
+                <div style={{display:"flex",gap:8,marginBottom:10}}>
+                  {[
+                    {label:"🔵 Μπλε",  color:"#1a2a3a", border:"#2a5a7a"},
+                    {label:"🟣 Μωβ",   color:"#2a1a3a", border:"#5a2a7a"},
+                    {label:"🟢 Πράσινο",color:"#1a2a10", border:"#3a6a20"},
+                    {label:"🟡 Χρυσό", color:"#2a1e08", border:"#6a5020"},
+                  ].map(opt=>(
+                    <button key={opt.color} onClick={()=>setOfferForm(p=>({...p,color:opt.color,border:opt.border}))} style={{
+                      flex:1, padding:"8px 4px", borderRadius:7, fontSize:11,
+                      background: offerForm.color===opt.color ? opt.border : C.surface,
+                      border:`1px solid ${offerForm.color===opt.color ? opt.border : C.border}`,
+                      color:C.cream, cursor:"pointer",
+                      fontFamily:font,
+                    }}>{opt.label}</button>
+                  ))}
+                </div>
+                <button onClick={()=>{
+                  if (!offerForm.text.trim()) return;
+                  setOffers(p=>[...p,{id:genId("O"),text:offerForm.text,active:true,color:offerForm.color,border:offerForm.border}]);
+                  setOfferForm(p=>({...p,text:""}));
+                  notify("✓ Προσφορά προστέθηκε!");
+                }} style={primBtn}>+ Προσθήκη Προσφοράς</button>
+              </div>
+
+              {/* Existing offers */}
+              {offers.length===0 && <div style={{textAlign:"center",color:C.muted,padding:"20px 0"}}>Δεν υπάρχουν προσφορές ακόμα.</div>}
+              {offers.map(offer=>(
+                <div key={offer.id} style={{background:offer.color,border:`1px solid ${offer.border}`,borderRadius:12,padding:"14px 16px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                    <div style={{fontSize:14,lineHeight:1.5,flex:1}}>{offer.text}</div>
+                    <div style={{display:"flex",gap:6,flexShrink:0}}>
+                      <button onClick={()=>{
+                        setOffers(p=>p.map(o=>o.id===offer.id?{...o,active:!o.active}:o));
+                        notify(offer.active?"Προσφορά απενεργοποιήθηκε":"Προσφορά ενεργοποιήθηκε!");
+                      }} style={{background:"none",border:`1px solid ${offer.border}`,borderRadius:6,color:C.cream,fontSize:12,padding:"4px 10px",cursor:"pointer",fontFamily:font}}>
+                        {offer.active?"⏸ Off":"▶ On"}
+                      </button>
+                      <button onClick={()=>{
+                        setOffers(p=>p.filter(o=>o.id!==offer.id));
+                        notify("Προσφορά διαγράφηκε.");
+                      }} style={{background:"none",border:"1px solid #6a2020",borderRadius:6,color:"#e05050",fontSize:12,padding:"4px 10px",cursor:"pointer",fontFamily:font}}>✕</button>
+                    </div>
+                  </div>
+                  <div style={{fontSize:11,color:offer.active?"#9ae880":"#e05050",marginTop:8}}>
+                    {offer.active?"● Ενεργή — εμφανίζεται σε όλους τους πελάτες":"○ Ανενεργή"}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
