@@ -331,7 +331,7 @@ export default function App() {
               <div style={{width:88,height:88,borderRadius:"50%",background:"radial-gradient(circle at 35% 35%,#d4a96a,#5e3c1a)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:40,boxShadow:`0 0 50px ${C.gold}33`,animation:"pulse 2.5s infinite",marginTop:40}}>☕</div>
               <div style={{textAlign:"center"}}>
                 <div style={{fontSize:22}}>Καλωσόρισες</div>
-                <div style={{fontSize:20,color:C.muted,marginTop:4}}>Κάθε 5 καφέδες, 1 δωρεάν.</div>
+                <div style={{fontSize:30,color:C.muted,marginTop:4}}>Κάθε 5 καφέδες, 1 δωρεάν.</div>
               </div>
               <div style={{width:"100%",display:"flex",flexDirection:"column",gap:10}}>
                 <input value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} placeholder="Email ή 'admin'" style={iStyle}/>
