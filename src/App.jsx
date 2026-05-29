@@ -288,7 +288,7 @@ export default function App() {
         {/* HEADER */}
         <div style={{padding:"26px 22px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
           <div>
-            <div style={{fontSize:11,letterSpacing:5,color:C.gold,textTransform:"uppercase",marginBottom:3}}>barista.gr</div>
+            <div style={{fontSize:14,letterSpacing:5,color:C.gold,textTransform:"uppercase",marginBottom:3}}>Taresso Artisan Coffee Roasters</div>
             <div style={{fontSize:26,fontWeight:400,letterSpacing:.5}}>{screenTitle[screen]||""}</div>
           </div>
           {user && (
