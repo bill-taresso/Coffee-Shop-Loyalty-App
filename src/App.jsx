@@ -172,6 +172,8 @@ export default function App() {
       customerId: currentUser.id,
       customer: currentUser.name,
       items: cart.map(i=>`${i.name}${i.qty>1?` ×${i.qty}`:""}`),
+      sugar: sugar,
+      note: orderNote,
       total: cartTotal,
       ts: Date.now(),
       status: "pending", // pending | confirmed | ready
