@@ -500,8 +500,7 @@ const [orderNote, setOrderNote] = useState("");
   ))}
 </div>
 <textarea value={orderNote} onChange={e=>setOrderNote(e.target.value)} placeholder="Σχόλια παραγγελίας... (π.χ. χωρίς γάλα, extra shot)" style={{...iStyle,resize:"none",height:80,marginBottom:10}}/>
-<button onClick={placeOrder} style={primBtn}>📨 Αποστολή Παραγγελίας</button>
-
+<div style={{display:"flex",gap:8,marginBottom:10}}>
               <button onClick={()=>setScreen("menu")} style={ghostBtn}>← Πίσω στο Μενού</button>
             </div>
           )}
