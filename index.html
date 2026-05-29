@@ -2,11 +2,82 @@
 <html lang="el">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="barista.gr" />
+    <meta name="theme-color" content="#c8a96e" />
+    <meta name="description" content="Κάθε 5 καφέδες, 1 δωρεάν. Παραγγελίες & πιστότητα." />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%2309080a'/><text y='145' x='16' font-size='145'>☕</text></svg>" />
     <title>barista.gr Loyalty</title>
+    <style>
+      body { margin: 0; background: #09080a; }
+      #pwa-install-banner {
+        display: none;
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: #1c1710; border: 1px solid #c8a96e; border-radius: 12px;
+        padding: 14px 20px; color: #f0e8d8; font-family: Georgia, serif;
+        font-size: 14px; z-index: 99999; text-align: center;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.6); width: 300px;
+      }
+      #pwa-install-banner button {
+        background: #c8a96e; border: none; border-radius: 8px;
+        padding: 8px 20px; color: #09080a; font-size: 14px;
+        cursor: pointer; margin-top: 10px; font-family: Georgia, serif;
+        font-weight: bold; width: 100%;
+      }
+      #pwa-install-banner .dismiss {
+        background: transparent; border: 1px solid #3a3028;
+        color: #7a7080; margin-top: 6px;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+
+    <div id="pwa-install-banner">
+      <div>☕ Πρόσθεσε το barista.gr στην αρχική σου οθόνη!</div>
+      <button id="pwa-install-btn">Εγκατάσταση App</button>
+      <button class="dismiss" id="pwa-dismiss-btn">Όχι τώρα</button>
+    </div>
+
+    <script>
+      let deferredPrompt;
+      const banner = document.getElementById('pwa-install-banner');
+      const installBtn = document.getElementById('pwa-install-btn');
+      const dismissBtn = document.getElementById('pwa-dismiss-btn');
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (!localStorage.getItem('pwa-dismissed')) {
+          setTimeout(() => { banner.style.display = 'block'; }, 3000);
+        }
+      });
+
+      installBtn.addEventListener('click', async () => {
+        banner.style.display = 'none';
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          await deferredPrompt.userChoice;
+          deferredPrompt = null;
+        }
+      });
+
+      dismissBtn.addEventListener('click', () => {
+        banner.style.display = 'none';
+        localStorage.setItem('pwa-dismissed', '1');
+      });
+
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
