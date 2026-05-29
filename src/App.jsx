@@ -271,7 +271,7 @@ export default function App() {
       {/* Admin Alert Banner */}
       {alerts.length>0 && user?.admin && (
         <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9998,background:C.error,padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",animation:"alertPulse 1.5s ease infinite"}}>
-          <div style={{fontSize:30,fontWeight:600}}>🚨 {alerts[0].msg}</div>
+          <div style={{fontSize:14,fontWeight:600}}>🚨 {alerts[0].msg}</div>
           <button onClick={()=>dismissAlert(alerts[0].id)} style={{background:"none",border:"1px solid #ffffff55",borderRadius:6,color:C.cream,fontSize:12,padding:"4px 10px",cursor:"pointer"}}>Dismiss</button>
         </div>
       )}
@@ -331,7 +331,7 @@ export default function App() {
               <div style={{width:88,height:88,borderRadius:"50%",background:"radial-gradient(circle at 35% 35%,#d4a96a,#5e3c1a)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:40,boxShadow:`0 0 50px ${C.gold}33`,animation:"pulse 2.5s infinite",marginTop:40}}>☕</div>
               <div style={{textAlign:"center"}}>
                 <div style={{fontSize:22}}>Καλωσόρισες</div>
-                <div style={{fontSize:14,color:C.muted,marginTop:4}}>Κάθε 5 καφέδες, 1 δωρεάν.</div>
+                <div style={{fontSize:20,color:C.muted,marginTop:4}}>Κάθε 5 καφέδες, 1 δωρεάν.</div>
               </div>
               <div style={{width:"100%",display:"flex",flexDirection:"column",gap:10}}>
                 <input value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} placeholder="Email ή 'admin'" style={iStyle}/>
