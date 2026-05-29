@@ -110,6 +110,8 @@ export default function App() {
   const [scanPhase, setScanPhase]   = useState("idle");
   const [scannedC, setScannedC]     = useState(null);
   const [cart, setCart]             = useState([]);
+  const [sugar, setSugar] = useState("Μέτριος");
+const [orderNote, setOrderNote] = useState("");
   const [now, setNow]               = useState(Date.now());
   const [offers, setOffers]         = useState([
     { id:"O001", text:"🧊 Freddo Espresso μόνο 1.50€ — Σήμερα!", active:true, color:"#1a2a3a", border:"#2a5a7a" },
