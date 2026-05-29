@@ -271,7 +271,7 @@ export default function App() {
       {/* Admin Alert Banner */}
       {alerts.length>0 && user?.admin && (
         <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9998,background:C.error,padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",animation:"alertPulse 1.5s ease infinite"}}>
-          <div style={{fontSize:20,fontWeight:600}}>🚨 {alerts[0].msg}</div>
+          <div style={{fontSize:30,fontWeight:600}}>🚨 {alerts[0].msg}</div>
           <button onClick={()=>dismissAlert(alerts[0].id)} style={{background:"none",border:"1px solid #ffffff55",borderRadius:6,color:C.cream,fontSize:12,padding:"4px 10px",cursor:"pointer"}}>Dismiss</button>
         </div>
       )}
