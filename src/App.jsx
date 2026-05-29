@@ -42,7 +42,7 @@ const C = {
   gold:"#c8a96e", goldDim:"#6e5c38", cream:"#f0e8d8", muted:"#7a7080",
   success:"#3d7a35", error:"#7a2828", free:"#2a5c22", accent:"#a06ef0",
 };
-const font = "'EB Garamond','Palatino Linotype',serif";
+const font = "Arial,sans-serif";
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap');
