@@ -1,0 +1,24 @@
+{
+  "name": "barista.gr Loyalty",
+  "short_name": "barista.gr",
+  "description": "Κάθε 5 καφέδες, 1 δωρεάν. Παραγγελίες & πιστότητα.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09080a",
+  "theme_color": "#c8a96e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%2309080a'/><text y='140' x='20' font-size='140'>☕</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%2309080a'/><text y='380' x='40' font-size='380'>☕</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
