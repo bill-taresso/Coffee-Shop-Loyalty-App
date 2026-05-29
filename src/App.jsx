@@ -490,7 +490,14 @@ export default function App() {
                 </div>
                 <div style={{fontSize:12,color:C.muted}}>Πληρωμή στο ταμείο ή κατά την παράδοση</div>
               </div>
-              <button onClick={placeOrder} style={primBtn}>📨 Αποστολή Παραγγελίας</button>
+              <div style={{display:"flex",gap:8,marginBottom:10}}>
+  {["Σκέτος","Μέτριος","Γλυκός"].map(s=>(
+    <button key={s} onClick={()=>setSugar(s)} style={{flex:1,padding:"10px 4px",borderRadius:8,background:sugar===s?C.gold:"transparent",border:`1px solid ${sugar===s?C.gold:C.border}`,color:sugar===s?C.bg:C.gold,fontSize:13,cursor:"pointer",fontFamily:font}}>{s}</button>
+  ))}
+</div>
+<textarea value={orderNote} onChange={e=>setOrderNote(e.target.value)} placeholder="Σχόλια παραγγελίας... (π.χ. χωρίς γάλα, extra shot)" style={{...iStyle,resize:"none",height:80,marginBottom:10}}/>
+<button onClick={placeOrder} style={primBtn}>📨 Αποστολή Παραγγελίας</button>
+
               <button onClick={()=>setScreen("menu")} style={ghostBtn}>← Πίσω στο Μενού</button>
             </div>
           )}
