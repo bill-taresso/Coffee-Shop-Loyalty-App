@@ -190,6 +190,42 @@ export default function App() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // ── Auto-refresh for admin (every 20 seconds) ─────────────────
+  useEffect(() => {
+    if (!currentUser?.admin) return;
+    const interval = setInterval(() => {
+      loadData();
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [currentUser, loadData]);
+
+  // ── Supabase Realtime for instant order notifications ──────────
+  useEffect(() => {
+    if (!currentUser?.admin) return;
+    let channel;
+    const connectRealtime = async () => {
+      try {
+        const ws = new WebSocket(
+          `wss://eayzuuqgjnraslkcwoxe.supabase.co/realtime/v1/websocket?apikey=sb_publishable_UwPXec5AjP9PkCmVk5BmIw_0qYy1EY_&vsn=1.0.0`
+        );
+        ws.onopen = () => {
+          ws.send(JSON.stringify({topic:"realtime:public:orders",event:"phx_join",payload:{},ref:"1"}));
+        };
+        ws.onmessage = (e) => {
+          try {
+            const msg = JSON.parse(e.data);
+            if (msg.event === "INSERT" || msg.event === "UPDATE") {
+              loadData();
+            }
+          } catch {}
+        };
+        channel = ws;
+      } catch(e) {}
+    };
+    connectRealtime();
+    return () => { if (channel) channel.close(); };
+  }, [currentUser, loadData]);
+
   useEffect(() => {
     timerRef.current = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timerRef.current);
@@ -208,6 +244,22 @@ export default function App() {
   },[]);
 
   const fireConfetti = () => { setConfetti(true); setTimeout(()=>setConfetti(false),2200); };
+
+  // ── Auto-refresh for logged-in customer (every 30 sec) ──────────
+  useEffect(() => {
+    if (!currentUser || currentUser.admin) return;
+    const interval = setInterval(() => {
+      loadData().then(() => {
+        // Update currentUser from fresh customers list
+        setCustomers(prev => {
+          const updated = prev.find(c => c.id === currentUser.id);
+          if (updated) setCurrentUser(u => ({...u, ...updated}));
+          return prev;
+        });
+      });
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [currentUser, loadData]);
 
   // ── Session persistence ───────────────────────────────────────
   useEffect(() => {
