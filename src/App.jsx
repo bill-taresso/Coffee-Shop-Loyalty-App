@@ -209,6 +209,31 @@ export default function App() {
 
   const fireConfetti = () => { setConfetti(true); setTimeout(()=>setConfetti(false),2200); };
 
+  // ── Session persistence ───────────────────────────────────────
+  useEffect(() => {
+    const saved = localStorage.getItem("taresso_user");
+    if (saved) {
+      try {
+        const u = JSON.parse(saved);
+        const age = Date.now() - (u.savedAt||0);
+        if (age < 30*24*60*60*1000) {
+          setCurrentUser(u);
+          setScreen(u.admin ? "admin" : "home");
+        } else {
+          localStorage.removeItem("taresso_user");
+        }
+      } catch(e) {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem("taresso_user", JSON.stringify({...currentUser, savedAt: Date.now()}));
+    } else {
+      localStorage.removeItem("taresso_user");
+    }
+  }, [currentUser]);
+
   // ── Auth ───────────────────────────────────────────────────────
   const handleLogin = async () => {
     if (loginEmail.trim()==="admin") { setCurrentUser({admin:true,name:"Διαχειριστής"}); setScreen("admin"); return; }
@@ -416,7 +441,7 @@ export default function App() {
             <div style={{fontSize:26,fontWeight:400,letterSpacing:.5}}>{screenTitle[screen]||""}</div>
           </div>
           {user && (
-            <button onClick={()=>{setCurrentUser(null);setScreen("login");setLoginEmail("");setCart([]);}} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:6,color:C.muted,fontSize:12,padding:"6px 12px",cursor:"pointer"}}>Έξοδος</button>
+            <button onClick={()=>{setCurrentUser(null);setScreen("login");setLoginEmail("");setCart([]);localStorage.removeItem("taresso_user");}} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:6,color:C.muted,fontSize:12,padding:"6px 12px",cursor:"pointer"}}>Έξοδος</button>
           )}
         </div>
 
