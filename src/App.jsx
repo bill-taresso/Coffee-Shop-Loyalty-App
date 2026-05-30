@@ -118,6 +118,7 @@ export default function App() {
     { id:"O002", text:"⭐ Double stamps κάθε Τετάρτη!", active:true, color:"#2a1a3a", border:"#5a2a7a" },
   ]);
   const [offerForm, setOfferForm]   = useState({ text:"", color:"#1a2a10", border:"#3a6a20" });
+  const [orderFilter, setOrderFilter] = useState("all"); // all | today | week | month
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -556,15 +557,22 @@ export default function App() {
           {/* ══ HISTORY ════════════════════════════════════════ */}
           {screen==="history" && user && !user.admin && (
             <div className="fadeUp" style={{display:"flex",flexDirection:"column",gap:8}}>
-              {userLogs.length===0&&<div style={{textAlign:"center",color:C.muted,paddingTop:30,fontSize:15}}>Δεν υπάρχουν σφραγίδες ακόμα.</div>}
-              {userLogs.map(l=>(
-                <div key={l.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                    <div style={{fontSize:14}}>☕ +1 σφραγίδα</div>
-                    <div style={{fontSize:12,color:C.gold}}>+1</div>
+              <div style={{fontSize:11,letterSpacing:3,color:C.gold,marginBottom:4}}>ΤΕΛΕΥΤΑΙΕΣ 10 ΠΑΡΑΓΓΕΛΙΕΣ</div>
+              {userOrders.length===0&&<div style={{textAlign:"center",color:C.muted,paddingTop:20,fontSize:15}}>Δεν υπάρχουν παραγγελίες ακόμα.</div>}
+              {userOrders.slice(0,10).map(o=>(
+                <div key={o.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                    <div style={{fontSize:14}}>{o.items.join(", ")}</div>
+                    <div style={{fontSize:13,color:C.gold}}>€{o.total.toFixed(2)}</div>
                   </div>
-                  {l.note&&<div style={{fontSize:12,color:"#9ae880",marginBottom:4}}>{l.note}</div>}
-                  <div style={{fontSize:11,color:C.muted}}>{fmtDate(l.ts)} στις {fmtTime(l.ts)}</div>
+                  {o.sugar&&<div style={{fontSize:12,color:C.gold,marginBottom:3}}>🍬 {o.sugar}</div>}
+                  {o.note&&<div style={{fontSize:12,color:"#a0c8e0",marginBottom:3}}>💬 {o.note}</div>}
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.muted}}>
+                    <span>{fmtDate(o.ts)} · {fmtTime(o.ts)}</span>
+                    <span style={{color:o.status==="ready"?"#8abe6a":o.status==="confirmed"?C.gold:C.muted}}>
+                      {o.status==="pending"?"⏳ Εκκρεμεί":o.status==="confirmed"?"✓ Επιβεβαιώθηκε":"☕ Έτοιμο"}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -573,8 +581,10 @@ export default function App() {
           {/* ══ ADMIN ORDERS ═══════════════════════════════════ */}
           {screen==="admin" && adminTab==="orders" && (
             <div className="fadeUp" style={{display:"flex",flexDirection:"column",gap:10}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-                {[["📋",pendingOrders.length,"Εκκρεμείς"],["✓",orders.filter(o=>o.status==="confirmed").length,"Επιβεβ."],["💰","€"+orders.reduce((s,o)=>s+o.total,0).toFixed(0),"Έσοδα"]].map(([e,v,l])=>(
+
+              {/* Stats */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:6}}>
+                {[["📋",pendingOrders.length,"Εκκρεμείς"],["✓",orders.filter(o=>o.status==="ready").length,"Ολοκλ."],["💰","€"+orders.reduce((s,o)=>s+o.total,0).toFixed(0),"Έσοδα"]].map(([e,v,l])=>(
                   <div key={l} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 8px",textAlign:"center"}}>
                     <div style={{fontSize:20}}>{e}</div>
                     <div style={{fontSize:18,color:C.gold,marginTop:2}}>{v}</div>
@@ -583,33 +593,54 @@ export default function App() {
                 ))}
               </div>
 
-              {orders.length===0&&<div style={{textAlign:"center",color:C.muted,paddingTop:20,fontSize:15}}>Δεν υπάρχουν παραγγελίες ακόμα.</div>}
+              {/* Filter */}
+              <div style={{display:"flex",gap:6,marginBottom:6}}>
+                {[["all","Όλες"],["today","Σήμερα"],["week","Εβδομάδα"],["month","Μήνας"]].map(([f,label])=>(
+                  <button key={f} onClick={()=>setOrderFilter(f)} style={{flex:1,padding:"8px 4px",borderRadius:7,fontSize:11,background:orderFilter===f?C.gold:"transparent",border:`1px solid ${orderFilter===f?C.gold:C.border}`,color:orderFilter===f?C.bg:C.gold,cursor:"pointer"}}>
+                    {label}
+                  </button>
+                ))}
+              </div>
 
-              {orders.map(o=>(
-                <div key={o.id} style={{background:C.card,border:`1px solid ${o.status==="pending"?C.gold:C.border}`,borderRadius:12,padding:16}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                    <div>
-                      <div style={{fontSize:15}}>{o.customer}</div>
-                      <div style={{fontSize:12,color:C.muted,marginTop:2}}>{fmtTime(o.ts)} · #{o.id}</div>
-                    </div>
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-                      <div style={{fontSize:14,color:C.gold}}>€{o.total.toFixed(2)}</div>
-                      <div style={{fontSize:10,padding:"3px 8px",borderRadius:12,background:o.status==="pending"?"#3a2a00":o.status==="confirmed"?"#1a3a10":"#1a2a3a",color:o.status==="pending"?C.gold:o.status==="confirmed"?"#8abe6a":"#6ab0e0",border:`1px solid ${o.status==="pending"?C.goldDim:o.status==="confirmed"?"#3a7020":"#2a5060"}`}}>
-                        {o.status==="pending"?"⏳ Εκκρεμεί":o.status==="confirmed"?"✓ Επιβεβαιώθηκε":"✓ Έτοιμο"}
+              {(() => {
+                const now2 = Date.now();
+                const filtered = orders.filter(o => {
+                  if (orderFilter==="today") return now2 - o.ts < 24*60*60*1000;
+                  if (orderFilter==="week")  return now2 - o.ts < 7*24*60*60*1000;
+                  if (orderFilter==="month") return now2 - o.ts < 30*24*60*60*1000;
+                  return true;
+                });
+                const filteredRevenue = filtered.reduce((s,o)=>s+o.total,0);
+                return (
+                  <>
+                    {orderFilter!=="all"&&<div style={{fontSize:12,color:C.muted,marginBottom:4,textAlign:"right"}}>
+                      {filtered.length} παραγγελίες · €{filteredRevenue.toFixed(2)} έσοδα
+                    </div>}
+                    {filtered.length===0&&<div style={{textAlign:"center",color:C.muted,paddingTop:20,fontSize:15}}>Δεν υπάρχουν παραγγελίες.</div>}
+                    {filtered.map(o=>(
+                      <div key={o.id} style={{background:C.card,border:`1px solid ${o.status==="pending"?C.gold:C.border}`,borderRadius:12,padding:16}}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                          <div>
+                            <div style={{fontSize:15}}>{o.customer}</div>
+                            <div style={{fontSize:12,color:C.muted,marginTop:2}}>{fmtDate(o.ts)} · {fmtTime(o.ts)}</div>
+                          </div>
+                          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                            <div style={{fontSize:14,color:C.gold}}>€{o.total.toFixed(2)}</div>
+                            <div style={{fontSize:10,padding:"3px 8px",borderRadius:12,background:o.status==="pending"?"#3a2a00":o.status==="confirmed"?"#1a3a10":"#1a2a3a",color:o.status==="pending"?C.gold:o.status==="confirmed"?"#8abe6a":"#6ab0e0",border:`1px solid ${o.status==="pending"?C.goldDim:o.status==="confirmed"?"#3a7020":"#2a5060"}`}}>
+                              {o.status==="pending"?"⏳ Εκκρεμεί":o.status==="confirmed"?"✓ Επιβεβαιώθηκε":"☕ Έτοιμο"}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{fontSize:13,color:C.muted,marginBottom:4}}>{o.items.join(", ")}</div>
+                        {o.sugar&&<div style={{fontSize:12,color:C.gold,marginBottom:4}}>🍬 {o.sugar}</div>}
+                        {o.note&&<div style={{fontSize:12,color:"#a0c8e0",marginBottom:10}}>💬 {o.note}</div>}
+                        {o.status==="pending"&&<button onClick={()=>confirmOrder(o.id)} style={primBtn}>✓ Επιβεβαίωση & Σφραγίδα</button>}
+                        {o.status==="confirmed"&&<button onClick={()=>markReady(o.id)} style={{...ghostBtn,borderColor:"#3a7020",color:"#8abe6a"}}>☕ Έτοιμο για παραλαβή</button>}
                       </div>
-                    </div>
-                  </div>
-                  <div style={{fontSize:13,color:C.muted,marginBottom:4}}>{o.items.join(", ")}</div>
-                  {o.sugar&&<div style={{fontSize:12,color:C.gold,marginBottom:4}}>🍬 {o.sugar}</div>}
-                  {o.note&&<div style={{fontSize:12,color:"#a0c8e0",marginBottom:10}}>💬 {o.note}</div>}
-                  {o.status==="pending" && (
-                    <button onClick={()=>confirmOrder(o.id)} style={primBtn}>✓ Επιβεβαίωση & Σφραγίδα</button>
-                  )}
-                  {o.status==="confirmed" && (
-                    <button onClick={()=>markReady(o.id)} style={{...ghostBtn,borderColor:"#3a7020",color:"#8abe6a"}}>☕ Έτοιμο για παραλαβή</button>
-                  )}
-                </div>
-              ))}
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           )}
 
