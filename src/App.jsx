@@ -563,11 +563,11 @@ export default function App() {
                 <div key={o.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
                     <div style={{fontSize:14}}>{o.items.join(", ")}</div>
-                    <div style={{fontSize:13,color:C.gold}}>€{o.total.toFixed(2)}</div>
+                    <div style={{fontSize:17,color:C.gold}}>€{o.total.toFixed(2)}</div>
                   </div>
-                  {o.sugar&&<div style={{fontSize:12,color:C.gold,marginBottom:3}}>🍬 {o.sugar}</div>}
-                  {o.note&&<div style={{fontSize:12,color:"#a0c8e0",marginBottom:3}}>💬 {o.note}</div>}
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.muted}}>
+                  {o.sugar&&<div style={{fontSize:16,color:C.gold,marginBottom:6}}>🍬 {o.sugar}</div>}
+                  {o.note&&<div style={{fontSize:16,color:"#a0c8e0",marginBottom:6}}>💬 {o.note}</div>}
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.muted}}>
                     <span>{fmtDate(o.ts)} · {fmtTime(o.ts)}</span>
                     <span style={{color:o.status==="ready"?"#8abe6a":o.status==="confirmed"?C.gold:C.muted}}>
                       {o.status==="pending"?"⏳ Εκκρεμεί":o.status==="confirmed"?"✓ Επιβεβαιώθηκε":"☕ Έτοιμο"}
