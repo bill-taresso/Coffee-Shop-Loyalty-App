@@ -147,6 +147,10 @@ export default function App() {
   ]);
   const [offerForm, setOfferForm]   = useState({ text:"", color:"#1a2a10", border:"#3a6a20" });
   const [orderFilter, setOrderFilter] = useState("all"); // all | today | week | month
+  const [reviewOrder, setReviewOrder] = useState(null); // order being reviewed
+  const [reviewStars, setReviewStars] = useState(0);
+  const [reviewText, setReviewText]   = useState("");
+  const [replyText, setReplyText]     = useState({});
   const timerRef = useRef(null);
 
   // ── Load data from Supabase ──────────────────────────────────────
@@ -408,6 +412,26 @@ export default function App() {
     setOrders(p=>p.map(o=>o.id===orderId?{...o,status:"ready"}:o));
   };
 
+  const submitReview = async () => {
+    if (!reviewOrder || reviewStars===0) { notify("Επίλεξε αστεράκια!","err"); return; }
+    try {
+      await sb.update("orders", { review_stars: reviewStars, review_text: reviewText, review_at: new Date().toISOString() }, {id: reviewOrder.id});
+    } catch(e) {}
+    setOrders(p=>p.map(o=>o.id===reviewOrder.id?{...o,review_stars:reviewStars,review_text:reviewText}:o));
+    setReviewOrder(null); setReviewStars(0); setReviewText("");
+    notify("Ευχαριστούμε για την αξιολόγηση! ⭐");
+  };
+
+  const submitReply = async (orderId, text) => {
+    if (!text.trim()) return;
+    try {
+      await sb.update("orders", { admin_reply: text }, {id: orderId});
+    } catch(e) {}
+    setOrders(p=>p.map(o=>o.id===orderId?{...o,admin_reply:text}:o));
+    setReplyText(p=>({...p,[orderId]:""}));
+    notify("✓ Απάντηση στάλθηκε!");
+  };
+
   // ── QR Scan (staff) ─────────────────────────────────────────────
   const doScan = () => {
     setScanPhase("scanning");
@@ -456,6 +480,40 @@ export default function App() {
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:font,color:C.cream,overflowX:"hidden"}}>
       <style>{CSS}</style>
+
+      {/* ══ REVIEW MODAL ══════════════════════════════════════ */}
+      {reviewOrder && (
+        <div style={{position:"fixed",inset:0,background:"#000000cc",zIndex:9990,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 20px"}}>
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:24,width:"100%",maxWidth:420}}>
+            <div style={{fontSize:11,letterSpacing:3,color:C.gold,marginBottom:6}}>ΑΞΙΟΛΟΓΗΣΗ</div>
+            <div style={{fontSize:16,marginBottom:4}}>{reviewOrder.items?.join(", ")}</div>
+            <div style={{fontSize:12,color:C.muted,marginBottom:20}}>{fmtDate(reviewOrder.ts)}</div>
+
+            {/* Stars */}
+            <div style={{display:"flex",gap:10,justifyContent:"center",marginBottom:20}}>
+              {[1,2,3,4,5].map(s=>(
+                <button key={s} onClick={()=>setReviewStars(s)} style={{background:"none",border:"none",cursor:"pointer",fontSize:36,filter:s<=reviewStars?"none":"grayscale(1) opacity(0.3)",transition:"all .15s"}}>⭐</button>
+              ))}
+            </div>
+            {reviewStars>0 && <div style={{textAlign:"center",fontSize:13,color:C.gold,marginBottom:16,marginTop:-10}}>
+              {["","Πολύ κακό","Κακό","Μέτριο","Καλό","Εξαιρετικό!"][reviewStars]}
+            </div>}
+
+            {/* Comment */}
+            <textarea
+              value={reviewText}
+              onChange={e=>setReviewText(e.target.value)}
+              placeholder="Σχόλια... (προαιρετικό)"
+              style={{...iStyle,resize:"none",height:80,marginBottom:14}}
+            />
+
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{setReviewOrder(null);setReviewStars(0);setReviewText("");}} style={{...ghostBtn,flex:1}}>Ακύρωση</button>
+              <button onClick={submitReview} style={{...primBtn,flex:1}}>Υποβολή ⭐</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confetti */}
       {confetti && Array.from({length:24}).map((_,i)=>(
@@ -514,7 +572,7 @@ export default function App() {
         {/* NAV Admin */}
         {user?.admin && (
           <div style={{display:"flex",gap:6,padding:"0 22px",marginBottom:22}}>
-            {[["orders","📋 Παραγγ."],["customers","👥 Πελάτες"],["scan","📷 Σάρωση"],["offers","🏷️ Προσφορές"],["alerts","🚨 Alerts"]].map(([t,label])=>(
+            {[["orders","📋 Παραγγ."],["customers","👥 Πελάτες"],["scan","📷 Σάρωση"],["offers","🏷️ Προσφορές"],["reviews","⭐ Reviews"],["alerts","🚨 Alerts"]].map(([t,label])=>(
               <button key={t} onClick={()=>{setAdminTab(t);setScreen(t==="scan"?"scan":"admin");}} style={{flex:1,padding:"9px 4px",borderRadius:7,fontSize:11,background:(screen==="scan"?t==="scan":adminTab===t&&screen==="admin")?C.gold:"transparent",border:`1px solid ${(screen==="scan"?t==="scan":adminTab===t&&screen==="admin")?C.gold:C.border}`,color:(screen==="scan"?t==="scan":adminTab===t&&screen==="admin")?C.bg:C.gold,cursor:"pointer",transition:"all .18s",position:"relative"}}>
                 {label}
                 {t==="orders"&&pendingOrders.length>0&&<span style={{position:"absolute",top:-6,right:-4,background:C.error,color:"#fff",borderRadius:"50%",width:18,height:18,fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>{pendingOrders.length}</span>}
@@ -758,17 +816,33 @@ export default function App() {
               {userOrders.slice(0,10).map(o=>(
                 <div key={o.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                    <div style={{fontSize:14}}>{o.items.join(", ")}</div>
+                    <div style={{fontSize:14}}>{o.items?.join(", ")}</div>
                     <div style={{fontSize:13,color:C.gold}}>€{o.total.toFixed(2)}</div>
                   </div>
                   {o.sugar&&<div style={{fontSize:12,color:C.gold,marginBottom:3}}>🍬 {o.sugar}</div>}
                   {o.note&&<div style={{fontSize:12,color:"#a0c8e0",marginBottom:3}}>💬 {o.note}</div>}
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.muted}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.muted,marginBottom:o.review_stars?8:0}}>
                     <span>{fmtDate(o.ts)} · {fmtTime(o.ts)}</span>
                     <span style={{color:o.status==="ready"?"#8abe6a":o.status==="confirmed"?C.gold:C.muted}}>
                       {o.status==="pending"?"⏳ Εκκρεμεί":o.status==="confirmed"?"✓ Επιβεβαιώθηκε":"☕ Έτοιμο"}
                     </span>
                   </div>
+                  {/* Review section */}
+                  {o.review_stars ? (
+                    <div style={{marginTop:8,background:"#1a1408",borderRadius:8,padding:"10px 12px"}}>
+                      <div style={{fontSize:16,marginBottom:4}}>{"⭐".repeat(o.review_stars)}</div>
+                      {o.review_text&&<div style={{fontSize:13,color:C.cream,marginBottom:6}}>"{o.review_text}"</div>}
+                      {o.admin_reply&&(
+                        <div style={{background:"#1a2a10",borderRadius:6,padding:"8px 10px",marginTop:6}}>
+                          <div style={{fontSize:10,color:"#8abe6a",letterSpacing:2,marginBottom:3}}>ΑΠΑΝΤΗΣΗ ΚΑΤΑΣΤΗΜΑΤΟΣ</div>
+                          <div style={{fontSize:13,color:C.cream}}>{o.admin_reply}</div>
+                        </div>
+                      )}
+                      <button onClick={()=>{setReviewOrder(o);setReviewStars(o.review_stars);setReviewText(o.review_text||"");}} style={{...ghostBtn,marginTop:8,padding:"8px",fontSize:12}}>✏️ Επεξεργασία</button>
+                    </div>
+                  ) : (
+                    <button onClick={()=>{setReviewOrder(o);setReviewStars(0);setReviewText("");}} style={{...ghostBtn,marginTop:8,padding:"8px",fontSize:12}}>⭐ Αξιολόγηση παραγγελίας</button>
+                  )}
                 </div>
               ))}
             </div>
@@ -980,6 +1054,59 @@ export default function App() {
                   <div style={{fontSize:11,color:offer.active?"#9ae880":"#e05050",marginTop:8}}>
                     {offer.active?"● Ενεργή — εμφανίζεται σε όλους τους πελάτες":"○ Ανενεργή"}
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ══ ADMIN REVIEWS ══════════════════════════════════ */}
+          {screen==="admin" && adminTab==="reviews" && (
+            <div className="fadeUp" style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{fontSize:11,letterSpacing:3,color:C.gold,marginBottom:4}}>ΑΞΙΟΛΟΓΗΣΕΙΣ ΠΕΛΑΤΩΝ</div>
+              {orders.filter(o=>o.review_stars).length===0&&(
+                <div style={{textAlign:"center",color:C.muted,paddingTop:30,fontSize:15}}>Δεν υπάρχουν αξιολογήσεις ακόμα.</div>
+              )}
+              {/* Stats */}
+              {orders.filter(o=>o.review_stars).length>0&&(()=>{
+                const reviewed = orders.filter(o=>o.review_stars);
+                const avg = reviewed.reduce((s,o)=>s+o.review_stars,0)/reviewed.length;
+                return (
+                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:16,textAlign:"center",marginBottom:4}}>
+                    <div style={{fontSize:36}}>{"⭐".repeat(Math.round(avg))}</div>
+                    <div style={{fontSize:22,color:C.gold,marginTop:4}}>{avg.toFixed(1)}/5</div>
+                    <div style={{fontSize:12,color:C.muted,marginTop:4}}>{reviewed.length} αξιολογήσεις</div>
+                  </div>
+                );
+              })()}
+              {orders.filter(o=>o.review_stars).map(o=>(
+                <div key={o.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:16}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                    <div>
+                      <div style={{fontSize:14}}>{o.customer}</div>
+                      <div style={{fontSize:11,color:C.muted}}>{fmtDate(o.ts)} · {o.items?.join(", ")}</div>
+                    </div>
+                    <div style={{fontSize:18}}>{"⭐".repeat(o.review_stars)}</div>
+                  </div>
+                  {o.review_text&&<div style={{fontSize:14,color:C.cream,background:"#1a1408",borderRadius:8,padding:"10px 12px",marginBottom:10}}>"{o.review_text}"</div>}
+                  {o.admin_reply?(
+                    <div style={{background:"#1a2a10",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
+                      <div style={{fontSize:10,color:"#8abe6a",letterSpacing:2,marginBottom:3}}>Η ΑΠΑΝΤΗΣΗ ΣΑΣ</div>
+                      <div style={{fontSize:13,color:C.cream,marginBottom:6}}>{o.admin_reply}</div>
+                      <button onClick={()=>setReplyText(p=>({...p,[o.id]:o.admin_reply}))} style={{...ghostBtn,padding:"6px",fontSize:11}}>✏️ Επεξεργασία</button>
+                    </div>
+                  ):(
+                    <div style={{fontSize:11,color:C.muted,marginBottom:8}}>Δεν έχετε απαντήσει ακόμα</div>
+                  )}
+                  {/* Reply input */}
+                  <textarea
+                    value={replyText[o.id]||""}
+                    onChange={e=>setReplyText(p=>({...p,[o.id]:e.target.value}))}
+                    placeholder="Γράψε απάντηση στον πελάτη..."
+                    style={{...iStyle,resize:"none",height:70,marginBottom:8}}
+                  />
+                  <button onClick={()=>submitReply(o.id, replyText[o.id]||"")} style={primBtn}>
+                    💬 {o.admin_reply?"Ενημέρωση Απάντησης":"Αποστολή Απάντησης"}
+                  </button>
                 </div>
               ))}
             </div>
