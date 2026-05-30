@@ -1,5 +1,42 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
+// ─── SUPABASE CLIENT ──────────────────────────────────────────────
+const SUPABASE_URL = "https://eayzuuqgjnraslkcwoxe.supabase.co";
+const SUPABASE_KEY = "sb_publishable_UwPXec5AjP9PkCmVk5BmIw_0qYy1EY_";
+
+const sb = {
+  async select(table, query="") {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" }
+    });
+    return r.json();
+  },
+  async insert(table, data) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
+      body: JSON.stringify(data)
+    });
+    return r.json();
+  },
+  async update(table, data, match) {
+    const q = Object.entries(match).map(([k,v])=>`${k}=eq.${v}`).join("&");
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${q}`, {
+      method: "PATCH",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
+      body: JSON.stringify(data)
+    });
+    return r.json();
+  },
+  async delete(table, match) {
+    const q = Object.entries(match).map(([k,v])=>`${k}=eq.${v}`).join("&");
+    await fetch(`${SUPABASE_URL}/rest/v1/${table}?${q}`, {
+      method: "DELETE",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+    });
+  }
+};
+
 function generateQRDataURL(text, size = 200) {
   const hash = Array.from(text).reduce((h, c) => (Math.imul(31, h) + c.charCodeAt(0)) | 0, 0);
   const rng = (seed) => { let s = seed; return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; }; };
@@ -74,18 +111,7 @@ const MENU = [
   { id:8, name:"Freddo Cappuccino", price:2.20, emoji:"🧊", cat:"Κρύα"  },
 ];
 
-const NOW = Date.now();
-const INIT_CUSTOMERS = [
-  { id:"C001", name:"Νίκος Παπαδόπουλος", email:"nikos@email.com",    purchases:4,  totalSpent:14.60, freeAvailable:false, joinDate:"2026-01-10", lastStamp: NOW - 25*60*1000 },
-  { id:"C002", name:"Μαρία Γεωργίου",      email:"maria@email.com",    purchases:10, totalSpent:38.50, freeAvailable:true,  joinDate:"2025-11-20", lastStamp: NOW - 60*60*1000 },
-  { id:"C003", name:"Δημήτρης Κώστας",    email:"dimitris@email.com", purchases:2,  totalSpent:7.00,  freeAvailable:false, joinDate:"2026-03-05", lastStamp: NOW - 90*60*1000 },
-  { id:"C004", name:"Ελένη Σταματίου",    email:"eleni@email.com",    purchases:7,  totalSpent:27.30, freeAvailable:false, joinDate:"2026-02-14", lastStamp: NOW - 45*60*1000 },
-];
-const INIT_LOGS = [
-  { id:"L001", customerId:"C002", customer:"Μαρία Γεωργίου",     ts: NOW-65*60*1000, note:"" },
-  { id:"L002", customerId:"C001", customer:"Νίκος Παπαδόπουλος", ts: NOW-26*60*1000, note:"" },
-  { id:"L003", customerId:"C004", customer:"Ελένη Σταματίου",    ts: NOW-46*60*1000, note:"" },
-];
+// Data loaded from Supabase
 
 const genId  = (p) => p + Date.now().toString(36).toUpperCase().slice(-5);
 const modulo = (p) => p % LOYALTY_GOAL;
@@ -95,13 +121,15 @@ const fmtDate = (ts) => new Date(ts).toLocaleDateString("el-GR",{day:"2-digit",m
 const cooldownRemaining = (ls) => { const d = COOLDOWN_MS-(Date.now()-ls); return d>0?d:0; };
 
 export default function App() {
-  const [customers, setCustomers]   = useState(INIT_CUSTOMERS);
-  const [logs, setLogs]             = useState(INIT_LOGS);
-  const [orders, setOrders]         = useState([]); // pending orders
+  const [customers, setCustomers]   = useState([]);
+  const [logs, setLogs]             = useState([]);
+  const [orders, setOrders]         = useState([]);
   const [alerts, setAlerts]         = useState([]);
   const [screen, setScreen]         = useState("login");
   const [currentUser, setCurrentUser] = useState(null);
   const [notification, setNotif]    = useState(null);
+  const [loading, setLoading]       = useState(false);
+  const [dbReady, setDbReady]       = useState(false);
   const [confetti, setConfetti]     = useState(false);
   const [adminTab, setAdminTab]     = useState("orders");
   const [loginEmail, setLoginEmail] = useState("");
@@ -120,6 +148,47 @@ export default function App() {
   const [offerForm, setOfferForm]   = useState({ text:"", color:"#1a2a10", border:"#3a6a20" });
   const [orderFilter, setOrderFilter] = useState("all"); // all | today | week | month
   const timerRef = useRef(null);
+
+  // ── Load data from Supabase ──────────────────────────────────────
+  const loadData = useCallback(async () => {
+    try {
+      const [custs, ords, logs_] = await Promise.all([
+        sb.select("customers", "?order=created_at.asc"),
+        sb.select("orders", "?order=created_at.desc"),
+        sb.select("stamp_logs", "?order=stamped_at.desc"),
+      ]);
+      if (Array.isArray(custs)) {
+        setCustomers(custs.map(c => ({
+          id: c.id, name: c.name, email: c.email, phone: c.phone||"",
+          purchases: c.purchases||0, totalSpent: parseFloat(c.total_spent||0),
+          freeAvailable: c.free_available||false,
+          joinDate: c.join_date||"", lastStamp: c.last_stamp ? new Date(c.last_stamp).getTime() : 0
+        })));
+      }
+      if (Array.isArray(ords)) {
+        setOrders(ords.map(o => ({
+          id: o.id, customerId: o.customer_id, customer: o.customer_name,
+          items: Array.isArray(o.items) ? o.items : JSON.parse(o.items||"[]"),
+          sugar: o.sugar||"", note: o.note||"",
+          total: parseFloat(o.total||0),
+          ts: new Date(o.created_at).getTime(),
+          status: o.status||"pending"
+        })));
+      }
+      if (Array.isArray(logs_)) {
+        setLogs(logs_.map(l => ({
+          id: l.id, customerId: l.customer_id, customer: l.customer_name,
+          ts: new Date(l.stamped_at).getTime(), note: l.note||""
+        })));
+      }
+      setDbReady(true);
+    } catch(e) {
+      console.error("Supabase load error:", e);
+      setDbReady(true);
+    }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
     timerRef.current = setInterval(() => setNow(Date.now()), 1000);
@@ -141,19 +210,36 @@ export default function App() {
   const fireConfetti = () => { setConfetti(true); setTimeout(()=>setConfetti(false),2200); };
 
   // ── Auth ───────────────────────────────────────────────────────
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (loginEmail.trim()==="admin") { setCurrentUser({admin:true,name:"Διαχειριστής"}); setScreen("admin"); return; }
-    const c = customers.find(c=>c.email.toLowerCase()===loginEmail.trim().toLowerCase());
-    if (!c) { notify("Δεν βρέθηκε λογαριασμός.","err"); return; }
-    setCurrentUser(c); setScreen("home");
+    setLoading(true);
+    try {
+      const results = await sb.select("customers", `?email=eq.${encodeURIComponent(loginEmail.trim().toLowerCase())}`);
+      if (!Array.isArray(results) || results.length===0) { notify("Δεν βρέθηκε λογαριασμός.","err"); setLoading(false); return; }
+      const c = results[0];
+      const user = { id:c.id, name:c.name, email:c.email, phone:c.phone||"", purchases:c.purchases||0, totalSpent:parseFloat(c.total_spent||0), freeAvailable:c.free_available||false, joinDate:c.join_date||"", lastStamp:c.last_stamp?new Date(c.last_stamp).getTime():0 };
+      setCurrentUser(user);
+      await loadData();
+      setScreen("home");
+    } catch(e) { notify("Σφάλμα σύνδεσης.","err"); }
+    setLoading(false);
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     const {name,email,phone} = regForm;
     if (!name||!email||!phone) { notify("Συμπλήρωσε όλα τα πεδία.","err"); return; }
-    if (customers.find(c=>c.email===email)) { notify("Το email υπάρχει ήδη.","err"); return; }
-    const newC = {id:genId("C"),name,email,phone,purchases:0,totalSpent:0,freeAvailable:false,joinDate:new Date().toISOString().split("T")[0],lastStamp:0};
-    setCustomers(p=>[...p,newC]); setCurrentUser(newC); notify("Καλωσόρισες! ☕"); setScreen("home");
+    setLoading(true);
+    try {
+      const exists = await sb.select("customers", `?email=eq.${encodeURIComponent(email.toLowerCase())}`);
+      if (Array.isArray(exists) && exists.length>0) { notify("Το email υπάρχει ήδη.","err"); setLoading(false); return; }
+      const result = await sb.insert("customers", { name, email:email.toLowerCase(), phone, purchases:0, total_spent:0, free_available:false, join_date:new Date().toISOString().split("T")[0] });
+      if (Array.isArray(result) && result.length>0) {
+        const c = result[0];
+        const newC = {id:c.id,name:c.name,email:c.email,phone:c.phone||"",purchases:0,totalSpent:0,freeAvailable:false,joinDate:c.join_date||"",lastStamp:0};
+        setCustomers(p=>[...p,newC]); setCurrentUser(newC); notify("Καλωσόρισες! ☕"); setScreen("home");
+      } else { notify("Σφάλμα εγγραφής.","err"); }
+    } catch(e) { notify("Σφάλμα εγγραφής.","err"); }
+    setLoading(false);
   };
 
   // ── Cart ────────────────────────────────────────────────────────
@@ -168,55 +254,82 @@ export default function App() {
   const cartCount  = cart.reduce((s,i)=>s+i.qty,0);
 
   // ── Place order (no payment — notify staff) ─────────────────────
-  const placeOrder = () => {
+  const placeOrder = async () => {
     if (cart.length===0) return;
-    const newOrder = {
-      id: genId("ORD"),
-      customerId: currentUser.id,
-      customer: currentUser.name,
-      items: cart.map(i=>`${i.name}${i.qty>1?` ×${i.qty}`:""}`),
-      sugar: sugar,
-      note: orderNote,
-      total: cartTotal,
-      ts: Date.now(),
-      status: "pending", // pending | confirmed | ready
-    };
-    setOrders(p=>[newOrder,...p]);
-    setCart([]);
-    setScreen("ordered");
-    notify("Η παραγγελία σου στάλθηκε! ☕");
+    setLoading(true);
+    try {
+      const result = await sb.insert("orders", {
+        customer_id: currentUser.id,
+        customer_name: currentUser.name,
+        items: JSON.stringify(cart.map(i=>`${i.name}${i.qty>1?` ×${i.qty}`:""}`)),
+        sugar: sugar,
+        note: orderNote,
+        total: cartTotal,
+        status: "pending"
+      });
+      const newOrder = {
+        id: Array.isArray(result)&&result[0] ? result[0].id : genId("ORD"),
+        customerId: currentUser.id,
+        customer: currentUser.name,
+        items: cart.map(i=>`${i.name}${i.qty>1?` ×${i.qty}`:""}`),
+        sugar, note: orderNote, total: cartTotal,
+        ts: Date.now(), status: "pending"
+      };
+      setOrders(p=>[newOrder,...p]);
+      setCart([]); setOrderNote(""); setSugar("Μέτριος");
+      setScreen("ordered");
+      notify("Η παραγγελία σου στάλθηκε! ☕");
+    } catch(e) { notify("Σφάλμα αποστολής.","err"); }
+    setLoading(false);
   };
 
   // ── Admin: confirm order → grant stamp ─────────────────────────
-  const confirmOrder = (orderId) => {
+  const confirmOrder = async (orderId) => {
     const order = orders.find(o=>o.id===orderId);
     if (!order) return;
     const nowTs = Date.now();
     const customer = customers.find(c=>c.id===order.customerId);
     if (!customer) return;
 
-    // Cooldown check
     const remaining = cooldownRemaining(customer.lastStamp);
     if (remaining>0) { notify(`Cooldown ενεργό για ${customer.name.split(" ")[0]}! ~${Math.ceil(remaining/60000)} λεπτά ακόμα.`,"err"); return; }
 
     const newP    = customer.purchases + 1;
     const newFree = newP % LOYALTY_GOAL === 0;
-
-    // Alert check
     const recentStamps = logs.filter(l=>l.customerId===customer.id && nowTs-l.ts<60*60*1000);
     if (recentStamps.length>=ALERT_THRESH) {
       setAlerts(p=>[{id:genId("ALR"),msg:`⚠️ ${customer.name.split(" ")[0]}: ${recentStamps.length+1} σφραγίδες στην τελευταία ώρα!`,ts:nowTs,customerId:customer.id},...p]);
     }
 
+    // Update Supabase
+    try {
+      await Promise.all([
+        sb.update("customers", {
+          purchases: newP,
+          total_spent: customer.totalSpent + order.total,
+          free_available: newFree,
+          last_stamp: new Date(nowTs).toISOString()
+        }, {id: customer.id}),
+        sb.update("orders", { status: "confirmed" }, {id: orderId}),
+        sb.insert("stamp_logs", {
+          customer_id: customer.id,
+          customer_name: customer.name,
+          note: newFree ? "🎁 Δωρεάν καφέ κερδήθηκε!" : ""
+        })
+      ]);
+    } catch(e) { console.error("Supabase confirm error:", e); }
+
     setCustomers(p=>p.map(c=>c.id===customer.id?{...c,purchases:newP,totalSpent:c.totalSpent+order.total,freeAvailable:newFree,lastStamp:nowTs}:c));
     setLogs(p=>[{id:genId("L"),customerId:customer.id,customer:customer.name,ts:nowTs,note:newFree?"🎁 Δωρεάν καφέ κερδήθηκε!":""},...p]);
     setOrders(p=>p.map(o=>o.id===orderId?{...o,status:"confirmed"}:o));
-
     if (newFree) { fireConfetti(); notify(`🎉 ${customer.name.split(" ")[0]} κέρδισε δωρεάν καφέ!`); }
     else notify(`✓ Παραγγελία επιβεβαιώθηκε · +1 σφραγίδα για ${customer.name.split(" ")[0]}!`);
   };
 
-  const markReady = (orderId) => setOrders(p=>p.map(o=>o.id===orderId?{...o,status:"ready"}:o));
+  const markReady = async (orderId) => {
+    try { await sb.update("orders", {status:"ready"}, {id:orderId}); } catch(e) {}
+    setOrders(p=>p.map(o=>o.id===orderId?{...o,status:"ready"}:o));
+  };
 
   // ── QR Scan (staff) ─────────────────────────────────────────────
   const doScan = () => {
@@ -228,7 +341,7 @@ export default function App() {
     },1800);
   };
 
-  const grantStampScan = () => {
+  const grantStampScan = async () => {
     if (!scannedC) return;
     const nowTs = Date.now();
     const remaining = cooldownRemaining(scannedC.lastStamp);
@@ -237,6 +350,12 @@ export default function App() {
     const newFree = newP%LOYALTY_GOAL===0;
     const recentStamps = logs.filter(l=>l.customerId===scannedC.id&&nowTs-l.ts<60*60*1000);
     if (recentStamps.length>=ALERT_THRESH) setAlerts(p=>[{id:genId("ALR"),msg:`⚠️ ${scannedC.name.split(" ")[0]}: ${recentStamps.length+1} σφραγίδες στην τελευταία ώρα!`,ts:nowTs,customerId:scannedC.id},...p]);
+    try {
+      await Promise.all([
+        sb.update("customers", {purchases:newP, free_available:newFree, last_stamp:new Date(nowTs).toISOString()}, {id:scannedC.id}),
+        sb.insert("stamp_logs", {customer_id:scannedC.id, customer_name:scannedC.name, note:newFree?"🎁 Δωρεάν καφέ κερδήθηκε!":""})
+      ]);
+    } catch(e) { console.error("Scan stamp error:", e); }
     setCustomers(p=>p.map(c=>c.id===scannedC.id?{...c,purchases:newP,freeAvailable:newFree,lastStamp:nowTs}:c));
     setLogs(p=>[{id:genId("L"),customerId:scannedC.id,customer:scannedC.name,ts:nowTs,note:newFree?"🎁 Δωρεάν καφέ κερδήθηκε!":""},...p]);
     if (newFree) { fireConfetti(); notify(`🎉 ${scannedC.name.split(" ")[0]} κέρδισε δωρεάν καφέ!`); }
@@ -340,7 +459,7 @@ export default function App() {
               </div>
               <div style={{width:"100%",display:"flex",flexDirection:"column",gap:10}}>
                 <input value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} placeholder="Email ή 'admin'" style={iStyle}/>
-                <button onClick={handleLogin} style={primBtn}>Είσοδος →</button>
+                <button onClick={handleLogin} disabled={loading} style={{...primBtn,opacity:loading?0.6:1}}>{loading?"Φόρτωση...":"Είσοδος →"}</button>
                 <button onClick={()=>setScreen("register")} style={ghostBtn}>Νέος Λογαριασμός</button>
               </div>
               <div style={{fontSize:11,color:"#2e2a38",textAlign:"center",lineHeight:1.9}}>nikos@email.com · maria@email.com<br/>dimitris@email.com · admin</div>
@@ -501,7 +620,7 @@ export default function App() {
                 ))}
               </div>
               <textarea value={orderNote} onChange={e=>setOrderNote(e.target.value)} placeholder="Σχόλια παραγγελίας... (π.χ. χωρίς γάλα, extra shot)" style={{...iStyle,resize:"none",height:80,marginBottom:10}}/>
-              <button onClick={placeOrder} style={primBtn}>📨 Αποστολή Παραγγελίας</button>
+              <button onClick={placeOrder} disabled={loading} style={{...primBtn,opacity:loading?0.6:1}}>{loading?"Αποστολή...":"📨 Αποστολή Παραγγελίας"}</button>
               <button onClick={()=>setScreen("menu")} style={ghostBtn}>← Πίσω στο Μενού</button>
             </div>
           )}
@@ -563,11 +682,11 @@ export default function App() {
                 <div key={o.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
                     <div style={{fontSize:14}}>{o.items.join(", ")}</div>
-                    <div style={{fontSize:17,color:C.gold}}>€{o.total.toFixed(2)}</div>
+                    <div style={{fontSize:13,color:C.gold}}>€{o.total.toFixed(2)}</div>
                   </div>
-                  {o.sugar&&<div style={{fontSize:16,color:C.gold,marginBottom:6}}>🍬 {o.sugar}</div>}
-                  {o.note&&<div style={{fontSize:16,color:"#a0c8e0",marginBottom:6}}>💬 {o.note}</div>}
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.muted}}>
+                  {o.sugar&&<div style={{fontSize:12,color:C.gold,marginBottom:3}}>🍬 {o.sugar}</div>}
+                  {o.note&&<div style={{fontSize:12,color:"#a0c8e0",marginBottom:3}}>💬 {o.note}</div>}
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.muted}}>
                     <span>{fmtDate(o.ts)} · {fmtTime(o.ts)}</span>
                     <span style={{color:o.status==="ready"?"#8abe6a":o.status==="confirmed"?C.gold:C.muted}}>
                       {o.status==="pending"?"⏳ Εκκρεμεί":o.status==="confirmed"?"✓ Επιβεβαιώθηκε":"☕ Έτοιμο"}
