@@ -724,14 +724,20 @@ export default function App() {
                     {MENU.filter(m=>m.cat===cat).map(item=>{
                       const inCart = cart.find(i=>i.id===item.id);
                       return (
-                        <button key={item.id} onClick={()=>addItem(item)} style={{background:inCart?"#231d12":C.card,border:`1px solid ${inCart?C.gold:C.border}`,borderRadius:11,padding:"14px 12px",cursor:"pointer",textAlign:"left",color:C.cream,transition:"all .18s",display:"flex",flexDirection:"column",gap:4}}>
+                        <div key={item.id} style={{background:inCart?"#231d12":C.card,border:`1px solid ${inCart?C.gold:C.border}`,borderRadius:11,padding:"14px 12px",transition:"all .18s",display:"flex",flexDirection:"column",gap:4,cursor:"pointer"}} onClick={()=>addItem(item)}>
                           <div style={{fontSize:24}}>{item.emoji}</div>
-                          <div style={{fontSize:14,lineHeight:1.3}}>{item.name}</div>
+                          <div style={{fontSize:14,lineHeight:1.3,color:C.cream}}>{item.name}</div>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}>
                             <div style={{fontSize:14,color:C.gold}}>€{item.price.toFixed(2)}</div>
-                            {inCart&&<div style={{fontSize:12,color:C.gold,background:`${C.gold}22`,padding:"2px 7px",borderRadius:10}}>×{inCart.qty}</div>}
+                            {inCart&&(
+                              <div style={{display:"flex",alignItems:"center",gap:6}} onClick={e=>e.stopPropagation()}>
+                                <button onClick={()=>removeItem(item.id)} style={{background:"#3a1010",border:"1px solid #7a2020",borderRadius:6,color:"#e05050",width:26,height:26,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                                <span style={{fontSize:13,color:C.gold,minWidth:16,textAlign:"center"}}>{inCart.qty}</span>
+                                <button onClick={()=>addItem(item)} style={{background:`${C.gold}22`,border:`1px solid ${C.goldDim}`,borderRadius:6,color:C.gold,width:26,height:26,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                              </div>
+                            )}
                           </div>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
