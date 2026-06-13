@@ -101,15 +101,30 @@ const CSS = `
 `;
 
 const MENU = [
-  { id:1, name:"Espresso",          price:2.50, emoji:"☕", cat:"Ζεστά" },
-  { id:2, name:"Cappuccino",        price:3.80, emoji:"☕", cat:"Ζεστά" },
-  { id:3, name:"Flat White",        price:3.50, emoji:"☕", cat:"Ζεστά" },
-  { id:4, name:"Filter Coffee",     price:2.80, emoji:"☕", cat:"Ζεστά" },
-  { id:5, name:"Latte",             price:3.90, emoji:"🥛", cat:"Ζεστά" },
-  { id:6, name:"Cold Brew",         price:4.20, emoji:"🧊", cat:"Κρύα"  },
-  { id:7, name:"Freddo Espresso",   price:2.00, emoji:"🧊", cat:"Κρύα"  },
-  { id:8, name:"Freddo Cappuccino", price:2.20, emoji:"🧊", cat:"Κρύα"  },
+  // Κρύα
+  { id:1,  name:"Freddo Espresso",       price:1.80, emoji:"🧊", cat:"Κρύα" },
+  { id:2,  name:"Freddo Cappuccino",     price:1.80, emoji:"🧊", cat:"Κρύα" },
+  // Ζεστά Espresso
+  { id:3,  name:"Espresso Μονό",         price:1.60, emoji:"☕", cat:"Ζεστά" },
+  { id:4,  name:"Espresso Διπλό",        price:1.80, emoji:"☕", cat:"Ζεστά" },
+  { id:5,  name:"Cappuccino Μονό",       price:1.80, emoji:"☕", cat:"Ζεστά" },
+  { id:6,  name:"Cappuccino Διπλό",      price:2.00, emoji:"☕", cat:"Ζεστά" },
+  { id:7,  name:"Ελληνικός Μονό",        price:1.60, emoji:"☕", cat:"Ζεστά" },
+  { id:8,  name:"Ελληνικός Διπλός",      price:1.80, emoji:"☕", cat:"Ζεστά" },
+  // Ροφήματα
+  { id:9,  name:"Σοκολάτα Ζεστή",        price:2.00, emoji:"🍫", cat:"Ροφήματα" },
+  { id:10, name:"Σοκολάτα Κρύα",         price:2.00, emoji:"🍫", cat:"Ροφήματα" },
+  { id:11, name:"Νεσκαφέ",               price:2.00, emoji:"☕", cat:"Ροφήματα" },
+  { id:12, name:"Αναψυκτικά / Χυμοί",   price:1.50, emoji:"🥤", cat:"Ροφήματα" },
+  { id:13, name:"Τσάι Κρύο / Ζεστό",    price:1.50, emoji:"🍵", cat:"Ροφήματα" },
+  { id:14, name:"Ενεργειακά Pota",       price:2.50, emoji:"⚡", cat:"Ροφήματα" },
+  // Φαγητό
+  { id:15, name:"Μπάρες",                price:2.00, emoji:"🍫", cat:"Φαγητό" },
+  { id:16, name:"Πίτες",                 price:2.00, emoji:"🥙", cat:"Φαγητό" },
+  { id:17, name:"Τοστ",                  price:2.00, emoji:"🥪", cat:"Φαγητό" },
 ];
+
+const DELIVERY_SURCHARGE = 0.20; // +0,20€ για delivery
 
 // Data loaded from Supabase
 
@@ -697,9 +712,14 @@ export default function App() {
           {/* ══ MENU ═══════════════════════════════════════════ */}
           {screen==="menu" && user && !user.admin && (
             <div className="fadeUp">
-              {["Ζεστά","Κρύα"].map(cat=>(
+              <div style={{background:"#1a2010",border:"1px solid #3a5020",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#8abe6a"}}>
+                🛵 Delivery: +€{DELIVERY_SURCHARGE.toFixed(2)} επιπλέον χρέωση
+              </div>
+              {["Κρύα","Ζεστά","Ροφήματα","Φαγητό"].map(cat=>(
                 <div key={cat} style={{marginBottom:22}}>
-                  <div style={{fontSize:11,letterSpacing:3,color:C.gold,marginBottom:10}}>{cat==="Ζεστά"?"☕ ΖΕΣΤΟΙ ΚΑΦΕΔΕΣ":"🧊 ΚΡΥΟΙ ΚΑΦΕΔΕΣ"}</div>
+                  <div style={{fontSize:11,letterSpacing:3,color:C.gold,marginBottom:10}}>
+                    {cat==="Κρύα"?"🧊 ΚΡΥΟΙ ΚΑΦΕΔΕΣ":cat==="Ζεστά"?"☕ ΖΕΣΤΟΙ ΚΑΦΕΔΕΣ":cat==="Ροφήματα"?"🥤 ΡΟΦΗΜΑΤΑ":"🥙 ΦΑΓΗΤΟ"}
+                  </div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                     {MENU.filter(m=>m.cat===cat).map(item=>{
                       const inCart = cart.find(i=>i.id===item.id);
@@ -743,9 +763,13 @@ export default function App() {
                 </div>
               ))}
               <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
                   <span style={{color:C.muted}}>Σύνολο</span>
                   <span style={{color:C.gold,fontSize:20}}>€{cartTotal.toFixed(2)}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                  <span style={{fontSize:12,color:"#8abe6a"}}>🛵 Χρέωση delivery</span>
+                  <span style={{fontSize:12,color:"#8abe6a"}}>+€{DELIVERY_SURCHARGE.toFixed(2)}</span>
                 </div>
                 <div style={{fontSize:12,color:C.muted}}>Πληρωμή στο ταμείο ή κατά την παράδοση</div>
               </div>
