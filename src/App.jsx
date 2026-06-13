@@ -162,7 +162,8 @@ export default function App() {
   ]);
   const [offerForm, setOfferForm]   = useState({ text:"", color:"#1a2a10", border:"#3a6a20" });
   const [orderFilter, setOrderFilter] = useState("all"); // all | today | week | month
-  const [reviewOrder, setReviewOrder] = useState(null); // order being reviewed
+  const [reviewOrder, setReviewOrder] = useState(null);
+  const [orderType, setOrderType]     = useState("pickup"); // pickup | delivery // order being reviewed
   const [reviewStars, setReviewStars] = useState(0);
   const [reviewText, setReviewText]   = useState("");
   const [replyText, setReplyText]     = useState({});
@@ -354,13 +355,15 @@ export default function App() {
     if (cart.length===0) return;
     setLoading(true);
     try {
+      const finalTotal = cartTotal + (orderType==="delivery" ? DELIVERY_SURCHARGE * cart.reduce((s,i)=>s+i.qty,0) : 0);
       const result = await sb.insert("orders", {
         customer_id: currentUser.id,
         customer_name: currentUser.name,
         items: JSON.stringify(cart.map(i=>`${i.name}${i.qty>1?` ×${i.qty}`:""}`)),
         sugar: sugar,
         note: orderNote,
-        total: cartTotal,
+        total: finalTotal,
+        order_type: orderType,
         status: "pending"
       });
       const newOrder = {
@@ -712,9 +715,7 @@ export default function App() {
           {/* ══ MENU ═══════════════════════════════════════════ */}
           {screen==="menu" && user && !user.admin && (
             <div className="fadeUp">
-              <div style={{background:"#1a2010",border:"1px solid #3a5020",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#8abe6a"}}>
-                🛵 Delivery: +€{DELIVERY_SURCHARGE.toFixed(2)} επιπλέον χρέωση
-              </div>
+
               {["Κρύα","Ζεστά","Ροφήματα","Φαγητό"].map(cat=>(
                 <div key={cat} style={{marginBottom:22}}>
                   <div style={{fontSize:11,letterSpacing:3,color:C.gold,marginBottom:10}}>
@@ -768,16 +769,36 @@ export default function App() {
                   </div>
                 </div>
               ))}
+              {/* Pickup / Delivery selector */}
+              <div style={{display:"flex",gap:8}}>
+                {[["pickup","🏪 Παραλαβή"],["delivery","🛵 Delivery"]].map(([t,label])=>(
+                  <button key={t} onClick={()=>setOrderType(t)} style={{flex:1,padding:"12px 4px",borderRadius:9,background:orderType===t?C.gold:"transparent",border:`1px solid ${orderType===t?C.gold:C.border}`,color:orderType===t?C.bg:C.gold,fontSize:14,cursor:"pointer",fontFamily:font}}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {orderType==="delivery"&&(
+                <div style={{background:"#1a2010",border:"1px solid #3a5020",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#8abe6a"}}>
+                  🛵 Χρέωση delivery +€{DELIVERY_SURCHARGE.toFixed(2)} ανά προϊόν
+                </div>
+              )}
               <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                  <span style={{color:C.muted}}>Σύνολο</span>
-                  <span style={{color:C.gold,fontSize:20}}>€{cartTotal.toFixed(2)}</span>
+                  <span style={{color:C.muted}}>Προϊόντα</span>
+                  <span style={{color:C.cream}}>€{cartTotal.toFixed(2)}</span>
                 </div>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                  <span style={{fontSize:12,color:"#8abe6a"}}>🛵 Χρέωση delivery</span>
-                  <span style={{fontSize:12,color:"#8abe6a"}}>+€{DELIVERY_SURCHARGE.toFixed(2)}</span>
+                {orderType==="delivery"&&(
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                    <span style={{fontSize:13,color:"#8abe6a"}}>🛵 Delivery ({cartCount} × €{DELIVERY_SURCHARGE.toFixed(2)})</span>
+                    <span style={{fontSize:13,color:"#8abe6a"}}>+€{(DELIVERY_SURCHARGE*cartCount).toFixed(2)}</span>
+                  </div>
+                )}
+                <div style={{height:1,background:C.border,margin:"8px 0"}}/>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <span style={{color:C.muted,fontWeight:600}}>Σύνολο</span>
+                  <span style={{color:C.gold,fontSize:20,fontWeight:600}}>€{(cartTotal+(orderType==="delivery"?DELIVERY_SURCHARGE*cartCount:0)).toFixed(2)}</span>
                 </div>
-                <div style={{fontSize:12,color:C.muted}}>Πληρωμή στο ταμείο ή κατά την παράδοση</div>
+                <div style={{fontSize:12,color:C.muted,marginTop:6}}>Πληρωμή στο ταμείο ή κατά την παράδοση</div>
               </div>
               <div style={{display:"flex",gap:8,marginBottom:10}}>
                 {["Σκέτος","Μέτριος","Γλυκός"].map(s=>(
@@ -923,6 +944,7 @@ export default function App() {
                           <div>
                             <div style={{fontSize:15}}>{o.customer}</div>
                             <div style={{fontSize:12,color:C.muted,marginTop:2}}>{fmtDate(o.ts)} · {fmtTime(o.ts)}</div>
+                  <div style={{fontSize:12,marginTop:2,color:o.order_type==="delivery"?"#8abe6a":C.gold}}>{o.order_type==="delivery"?"🛵 Delivery":"🏪 Παραλαβή"}</div>
                           </div>
                           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                             <div style={{fontSize:14,color:C.gold}}>€{o.total.toFixed(2)}</div>
